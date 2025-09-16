@@ -5,50 +5,165 @@
 
 class SEOContentAnalyzer {
     constructor() {
+        console.log('=== SEOContentAnalyzer constructor starting ===');
         this.content = '';
         this.targetKeyword = '';
         this.metaDescription = '';
         this.analysisResults = {};
         this.isInitialLoad = true;
 
+        console.log('Initializing event listeners...');
         this.initializeEventListeners();
+
+        console.log('Running initial analysis...');
         this.updateAnalysis();
+
         this.isInitialLoad = false;
+        console.log('=== SEOContentAnalyzer setup complete ===');
+    }
+
+    // Helper function for safe DOM element access
+    safeGetElement(id) {
+        const element = document.getElementById(id);
+        if (!element) {
+            console.warn(`Element with id '${id}' not found in DOM`);
+            return null;
+        }
+        return element;
+    }
+
+    // Helper function for safe DOM text content setting
+    safeSetTextContent(id, content) {
+        const element = this.safeGetElement(id);
+        if (element) {
+            element.textContent = content;
+        }
+    }
+
+    // Helper function for safe DOM innerHTML setting
+    safeSetInnerHTML(id, html) {
+        const element = this.safeGetElement(id);
+        if (element) {
+            element.innerHTML = html;
+        }
+    }
+
+    // Calculate pixel width of meta description for different devices
+    calculateMetaPixelWidth(text) {
+        if (!text || text.trim() === '') {
+            return { mobile: 0, desktop: 0, tablet: 0 };
+        }
+
+        // Create a hidden canvas for accurate text measurement
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+
+        // Google's SERP fonts (approximate based on 2024 research)
+        const fonts = {
+            mobile: '14px/1.4 "Google Sans", Arial, sans-serif',      // Mobile SERP font
+            tablet: '14px/1.4 "Google Sans", Arial, sans-serif',      // Tablet SERP font
+            desktop: '14px/1.4 "Google Sans", Arial, sans-serif'      // Desktop SERP font
+        };
+
+        const results = {};
+
+        // Calculate for each device type
+        Object.keys(fonts).forEach(device => {
+            context.font = fonts[device];
+
+            // Measure text width with font metrics
+            const metrics = context.measureText(text);
+            let pixelWidth = metrics.width;
+
+            // Add character-specific adjustments for more accuracy
+            const adjustments = this.getCharacterAdjustments(text);
+            pixelWidth += adjustments[device] || 0;
+
+            // Apply device-specific multipliers (based on Google SERP behavior)
+            const deviceMultipliers = {
+                mobile: 1.0,    // Base measurement
+                tablet: 1.05,   // Slightly wider spacing
+                desktop: 1.1    // Desktop has more generous spacing
+            };
+
+            results[device] = Math.round(pixelWidth * deviceMultipliers[device]);
+        });
+
+        // Clean up canvas
+        canvas.remove();
+
+        return results;
+    }
+
+    // Character-specific adjustments for more accurate pixel calculation
+    getCharacterAdjustments(text) {
+        // Count character types that affect rendering
+        const wideChars = (text.match(/[WMQGD]/g) || []).length;          // Wide characters
+        const narrowChars = (text.match(/[ijl1\|]/g) || []).length;       // Narrow characters
+        const punctuation = (text.match(/[.,;:!?"']/g) || []).length;     // Punctuation
+        const spaces = (text.match(/\s/g) || []).length;                  // Spaces
+
+        return {
+            mobile: (wideChars * 2) + (narrowChars * -1) + (punctuation * -0.5) + (spaces * -1),
+            tablet: (wideChars * 2.2) + (narrowChars * -1.1) + (punctuation * -0.6) + (spaces * -1.1),
+            desktop: (wideChars * 2.5) + (narrowChars * -1.2) + (punctuation * -0.7) + (spaces * -1.2)
+        };
     }
 
     initializeEventListeners() {
-        const contentInput = document.getElementById('content-input');
-        const targetKeyword = document.getElementById('target-keyword');
-        const metaDescription = document.getElementById('meta-description');
+        const contentInput = this.safeGetElement('content-input');
+        const targetKeyword = this.safeGetElement('target-keyword');
+        const metaDescription = this.safeGetElement('meta-description');
 
-        // Real-time analysis with debouncing
-        contentInput.addEventListener('input', this.debounce(() => {
-            this.content = contentInput.value;
-            this.updateAnalysis();
-        }, 300));
+        // Real-time analysis with debouncing - with null checks
+        if (contentInput) {
+            console.log('Content input element found, adding event listener');
+            contentInput.addEventListener('input', this.debounce(() => {
+                this.content = contentInput.value;
+                console.log('Content input event fired! Content length:', this.content.length);
+                console.log('First 50 characters:', this.content.substring(0, 50));
+                this.updateAnalysis();
+            }, 300));
+        } else {
+            console.error('Content input element not found!');
+        }
 
-        targetKeyword.addEventListener('input', this.debounce(() => {
-            this.targetKeyword = targetKeyword.value;
-            this.updateAnalysis();
-        }, 300));
+        if (targetKeyword) {
+            targetKeyword.addEventListener('input', this.debounce(() => {
+                this.targetKeyword = targetKeyword.value;
+                this.updateAnalysis();
+            }, 300));
+        }
 
-        metaDescription.addEventListener('input', this.debounce(() => {
-            this.metaDescription = metaDescription.value;
-            this.updateMetaAnalysis();
-        }, 300));
+        if (metaDescription) {
+            metaDescription.addEventListener('input', this.debounce(() => {
+                this.metaDescription = metaDescription.value;
+                this.updateMetaAnalysis();
+            }, 300));
+        }
 
-        // Export functionality
-        document.getElementById('export-json').addEventListener('click', () => this.exportJSON());
-        document.getElementById('export-csv').addEventListener('click', () => this.exportCSV());
-        document.getElementById('clear-content').addEventListener('click', () => this.clearContent());
+        // Export functionality with safe element access
+        const exportJsonBtn = this.safeGetElement('export-json');
+        const exportCsvBtn = this.safeGetElement('export-csv');
+        const clearContentBtn = this.safeGetElement('clear-content');
+
+        if (exportJsonBtn) {
+            exportJsonBtn.addEventListener('click', () => this.exportJSON());
+        }
+        if (exportCsvBtn) {
+            exportCsvBtn.addEventListener('click', () => this.exportCSV());
+        }
+        if (clearContentBtn) {
+            clearContentBtn.addEventListener('click', () => this.clearContent());
+        }
     }
 
     debounce(func, wait) {
         let timeout;
-        return function executedFunction(...args) {
+        return (...args) => {
             const later = () => {
                 clearTimeout(timeout);
-                func(...args);
+                func.apply(this, args);
             };
             clearTimeout(timeout);
             timeout = setTimeout(later, wait);
@@ -56,34 +171,55 @@ class SEOContentAnalyzer {
     }
 
     updateAnalysis() {
+        console.log('updateAnalysis called with content length:', this.content.length);
+
         if (!this.content.trim()) {
+            console.log('No content, resetting analysis');
             this.resetAnalysis();
             return;
         }
 
-        // Perform all analyses
-        const wordStats = this.calculateWordStats();
-        const readabilityScores = this.calculateReadabilityScores();
-        const keywordAnalysis = this.analyzeKeywords();
-        const headingStructure = this.analyzeHeadingStructure();
-        const seoScore = this.calculateSEOScore(wordStats, readabilityScores, keywordAnalysis, headingStructure);
+        try {
+            // Perform all analyses
+            console.log('Starting analysis calculations...');
+            const wordStats = this.calculateWordStats();
+            console.log('Word stats:', wordStats);
 
-        // Store results
-        this.analysisResults = {
-            wordStats,
-            readabilityScores,
-            keywordAnalysis,
-            headingStructure,
-            seoScore,
-            timestamp: new Date().toISOString()
-        };
+            const readabilityScores = this.calculateReadabilityScores();
+            console.log('Readability scores:', readabilityScores);
 
-        // Update UI
-        this.updateWordStatsUI(wordStats);
-        this.updateReadabilityUI(readabilityScores);
-        this.updateKeywordAnalysisUI(keywordAnalysis);
-        this.updateHeadingStructureUI(headingStructure);
-        this.updateSEOScoreUI(seoScore);
+            const keywordAnalysis = this.analyzeKeywords();
+            console.log('Keyword analysis:', keywordAnalysis);
+
+            const headingStructure = this.analyzeHeadingStructure();
+            console.log('Heading structure:', headingStructure);
+
+            const seoScore = this.calculateSEOScore(wordStats, readabilityScores, keywordAnalysis, headingStructure);
+            console.log('SEO score:', seoScore);
+
+            // Store results
+            this.analysisResults = {
+                wordStats,
+                readabilityScores,
+                keywordAnalysis,
+                headingStructure,
+                seoScore,
+                timestamp: new Date().toISOString()
+            };
+
+            // Update UI
+            console.log('Updating UI...');
+            this.updateWordStatsUI(wordStats);
+            this.updateReadabilityUI(readabilityScores);
+            this.updateKeywordAnalysisUI(keywordAnalysis);
+            this.updateHeadingStructureUI(headingStructure);
+            this.updateSEOScoreUI(seoScore);
+            console.log('Analysis complete!');
+
+        } catch (error) {
+            console.error('Error in updateAnalysis:', error);
+            console.error('Error stack:', error.stack);
+        }
     }
 
     calculateWordStats() {
@@ -125,20 +261,40 @@ class SEOContentAnalyzer {
         const syllables = this.countSyllables();
         const polysyllabicWords = this.countPolysyllabicWords();
 
+        // Additional safety checks to prevent invalid calculations
+        if (syllables === 0) {
+            return {
+                fleschEase: 0,
+                fleschKincaid: 0,
+                smogIndex: 0,
+                fleschEaseGrade: 'No text to analyze',
+                fleschKincaidGrade: 'No text to analyze',
+                smogGrade: 'No text to analyze'
+            };
+        }
+
+        // Safe division calculations with fallbacks
+        const wordsPerSentence = sentences > 0 ? words / sentences : 0;
+        const syllablesPerWord = words > 0 ? syllables / words : 0;
+
         // Flesch Reading Ease: 206.835 - (1.015 × words/sentences) - (84.6 × syllables/words)
         const fleschEase = Math.max(0, Math.min(100,
-            206.835 - (1.015 * (words / sentences)) - (84.6 * (syllables / words))
+            206.835 - (1.015 * wordsPerSentence) - (84.6 * syllablesPerWord)
         ));
 
         // Flesch-Kincaid Grade Level: 0.39 × (words/sentences) + 11.8 × (syllables/words) - 15.59
         const fleschKincaid = Math.max(0,
-            0.39 * (words / sentences) + 11.8 * (syllables / words) - 15.59
+            0.39 * wordsPerSentence + 11.8 * syllablesPerWord - 15.59
         );
 
-        // SMOG Index: 1.043 × √(polysyllabic words × 30/sentences) + 3.1291
-        const smogIndex = sentences >= 30 ?
-            1.043 * Math.sqrt((polysyllabicWords * 30) / sentences) + 3.1291 :
-            Math.max(0, 1.043 * Math.sqrt(polysyllabicWords) + 3.1291);
+        // SMOG Index with enhanced safety checks
+        let smogIndex = 0;
+        if (sentences >= 30 && polysyllabicWords >= 0) {
+            const smogValue = (polysyllabicWords * 30) / sentences;
+            smogIndex = smogValue >= 0 ? 1.043 * Math.sqrt(smogValue) + 3.1291 : 0;
+        } else if (polysyllabicWords >= 0) {
+            smogIndex = 1.043 * Math.sqrt(Math.max(0, polysyllabicWords)) + 3.1291;
+        }
 
         return {
             fleschEase: Math.round(fleschEase * 10) / 10,
@@ -155,22 +311,61 @@ class SEOContentAnalyzer {
         let syllableCount = 0;
 
         words.forEach(word => {
-            // Remove punctuation
-            word = word.replace(/[^a-z]/g, '');
-            if (word.length === 0) return;
-
-            // Count vowel groups
-            let syllables = (word.match(/[aeiouy]+/g) || []).length;
-
-            // Subtract silent 'e' at the end
-            if (word.endsWith('e')) syllables--;
-
-            // Every word has at least one syllable
-            syllables = Math.max(1, syllables);
-            syllableCount += syllables;
+            syllableCount += this.countWordSyllables(word);
         });
 
         return syllableCount;
+    }
+
+    // Improved syllable counting for individual words
+    countWordSyllables(word) {
+        // Remove punctuation and convert to lowercase
+        word = word.replace(/[^a-z]/g, '').toLowerCase();
+        if (word.length === 0) return 0;
+
+        // Handle special cases
+        if (word.length <= 3) return 1;
+
+        // Remove common suffixes that don't add syllables
+        word = word.replace(/(ed|es|s)$/, '');
+
+        // Count vowel groups more accurately
+        let syllables = 0;
+        let previousWasVowel = false;
+
+        for (let i = 0; i < word.length; i++) {
+            const char = word[i];
+            const isVowel = /[aeiouy]/.test(char);
+
+            // Special handling for 'y'
+            if (char === 'y') {
+                // 'y' is a vowel if it's not at the beginning and follows a consonant
+                if (i === 0 || /[aeiouy]/.test(word[i - 1])) {
+                    continue; // 'y' is consonant here
+                }
+            }
+
+            if (isVowel && !previousWasVowel) {
+                syllables++;
+            }
+            previousWasVowel = isVowel;
+        }
+
+        // Handle silent 'e' more accurately
+        if (word.endsWith('e') && syllables > 1) {
+            // Check if it's truly silent
+            if (word.length > 2 && !/[aeiouy]/.test(word[word.length - 2])) {
+                syllables--;
+            }
+        }
+
+        // Handle special cases
+        if (word.endsWith('le') && word.length > 2 && !/[aeiouy]/.test(word[word.length - 3])) {
+            syllables++;
+        }
+
+        // Every word has at least one syllable
+        return Math.max(1, syllables);
     }
 
     countPolysyllabicWords() {
@@ -178,13 +373,7 @@ class SEOContentAnalyzer {
         let polysyllabicCount = 0;
 
         words.forEach(word => {
-            word = word.replace(/[^a-z]/g, '');
-            if (word.length === 0) return;
-
-            let syllables = (word.match(/[aeiouy]+/g) || []).length;
-            if (word.endsWith('e')) syllables--;
-            syllables = Math.max(1, syllables);
-
+            const syllables = this.countWordSyllables(word);
             if (syllables >= 3) polysyllabicCount++;
         });
 
@@ -221,30 +410,59 @@ class SEOContentAnalyzer {
             };
         }
 
-        const words = this.content.toLowerCase().split(/\s+/).filter(word => word.length > 0);
-        const totalWords = words.length;
+        // Use the same word counting method as calculateWordStats for consistency
+        const totalWords = this.analysisResults?.wordStats?.words || this.content.trim().split(/\s+/).filter(word => word.length > 0).length;
 
-        // Primary keyword analysis
+        // Clean words for keyword analysis (but keep totalWords consistent)
+        const cleanedWords = this.content.toLowerCase()
+            .replace(/[^\w\s]/g, ' ') // Replace punctuation with spaces
+            .split(/\s+/)
+            .filter(word => word.length > 0);
+
+        // Primary keyword analysis with improved matching
         let primaryKeywordCount = 0;
         let primaryKeywordDensity = 0;
         let status = 'Enter target keyword for analysis';
 
         if (this.targetKeyword.trim()) {
             const keyword = this.targetKeyword.toLowerCase().trim();
-            const keywordWords = keyword.split(/\s+/);
+            const keywordWords = keyword.split(/\s+/).filter(w => w.length > 0);
 
             if (keywordWords.length === 1) {
-                // Single word keyword
-                primaryKeywordCount = words.filter(word =>
-                    word.replace(/[^a-z0-9]/g, '') === keyword.replace(/[^a-z0-9]/g, '')
-                ).length;
+                // Single word keyword - exact and stem matching
+                const targetWord = keywordWords[0].replace(/[^\w]/g, '');
+                primaryKeywordCount = cleanedWords.filter(word => {
+                    const cleanWord = word.replace(/[^\w]/g, '');
+                    // Exact match
+                    if (cleanWord === targetWord) return true;
+                    // Basic stem matching (remove common endings)
+                    const stemmed = cleanWord.replace(/(ing|ed|er|est|ly|s)$/, '');
+                    const targetStemmed = targetWord.replace(/(ing|ed|er|est|ly|s)$/, '');
+                    return stemmed === targetStemmed && stemmed.length > 2;
+                }).length;
             } else {
-                // Multi-word keyword phrase
-                const text = this.content.toLowerCase();
-                const regex = new RegExp(`\\b${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
-                primaryKeywordCount = (text.match(regex) || []).length;
+                // Multi-word keyword phrase - improved phrase detection
+                const text = this.content.toLowerCase().replace(/[^\w\s]/g, ' ');
+                const phraseRegex = new RegExp(`\\b${keywordWords.join('\\s+')}\\b`, 'gi');
+                const exactMatches = (text.match(phraseRegex) || []).length;
+
+                // Also count partial phrase matches (words appearing close together)
+                let partialMatches = 0;
+                const words = text.split(/\s+/);
+                for (let i = 0; i <= words.length - keywordWords.length; i++) {
+                    const slice = words.slice(i, i + keywordWords.length);
+                    const matchCount = slice.filter(word =>
+                        keywordWords.some(kw => word.includes(kw) || kw.includes(word))
+                    ).length;
+                    if (matchCount >= Math.ceil(keywordWords.length * 0.7)) {
+                        partialMatches++;
+                    }
+                }
+
+                primaryKeywordCount = exactMatches + Math.floor(partialMatches * 0.5);
             }
 
+            // Calculate density consistently for both single words and phrases
             primaryKeywordDensity = totalWords > 0 ? (primaryKeywordCount / totalWords) * 100 : 0;
 
             // Status based on density (0.5-2% optimal per research)
@@ -262,7 +480,7 @@ class SEOContentAnalyzer {
         }
 
         // Top keywords extraction
-        const topKeywords = this.extractTopKeywords(words);
+        const topKeywords = this.extractTopKeywords(cleanedWords);
 
         return {
             primaryKeywordDensity: Math.round(primaryKeywordDensity * 100) / 100,
@@ -270,7 +488,7 @@ class SEOContentAnalyzer {
             optimalRange: '0.5-2%',
             status,
             topKeywords,
-            semanticKeywords: this.extractSemanticKeywords(words)
+            semanticKeywords: this.extractSemanticKeywords(cleanedWords)
         };
     }
 
@@ -387,6 +605,9 @@ class SEOContentAnalyzer {
             issues.push('Heading hierarchy issues detected');
         }
 
+        // Extract H1 text for SEO analysis
+        const h1Text = hasH1 ? headings.find(h => h.level === 1)?.text || '' : '';
+
         return {
             totalHeadings,
             headings,
@@ -394,154 +615,369 @@ class SEOContentAnalyzer {
             hasH1,
             multipleH1,
             structureScore: Math.max(0, structureScore),
-            issues
+            issues,
+            headingCount: totalHeadings, // For compatibility with new SEO algorithm
+            h1Text: h1Text // For keyword analysis in SEO algorithm
         };
     }
 
     calculateSEOScore(wordStats, readabilityScores, keywordAnalysis, headingStructure) {
-        let contentQualityScore = 0;
-        let technicalSEOScore = 0;
-        let readabilityScore = 0;
+        // Professional-grade SEO scoring based on 2024-2025 ranking factors
+        const scores = {
+            contentQuality: this.calculateContentQualityScore(wordStats, keywordAnalysis),
+            technicalSEO: this.calculateTechnicalSEOScore(headingStructure, keywordAnalysis),
+            readability: this.calculateReadabilityScore(readabilityScores),
+            userExperience: this.calculateUserExperienceScore(wordStats)
+        };
 
-        // Content Quality Score (40% weight)
-        // Word count optimization (1,500-2,500 optimal for blog posts)
-        if (wordStats.words >= 1500 && wordStats.words <= 2500) {
-            contentQualityScore += 30;
-        } else if (wordStats.words >= 1000 && wordStats.words <= 3000) {
-            contentQualityScore += 20;
-        } else if (wordStats.words >= 500) {
-            contentQualityScore += 10;
-        }
+        // Weighted calculation (totals 100%)
+        const weights = {
+            contentQuality: 0.35,    // 35% - Content quality and relevance
+            technicalSEO: 0.30,      // 30% - Technical SEO factors
+            readability: 0.20,       // 20% - Readability and accessibility
+            userExperience: 0.15     // 15% - User experience factors
+        };
 
-        // Keyword optimization
-        if (keywordAnalysis.primaryKeywordDensity >= 0.5 && keywordAnalysis.primaryKeywordDensity <= 2) {
-            contentQualityScore += 30;
-        } else if (keywordAnalysis.primaryKeywordDensity > 0) {
-            contentQualityScore += 15;
-        }
-
-        // Content structure
-        if (wordStats.sentences > 0) {
-            const avgWordsPerSentence = wordStats.words / wordStats.sentences;
-            if (avgWordsPerSentence >= 15 && avgWordsPerSentence <= 20) {
-                contentQualityScore += 25;
-            } else if (avgWordsPerSentence >= 10 && avgWordsPerSentence <= 25) {
-                contentQualityScore += 15;
-            } else {
-                contentQualityScore += 5;
-            }
-        }
-
-        // Semantic keyword presence
-        if (keywordAnalysis.semanticKeywords.length > 0) {
-            contentQualityScore += 15;
-        }
-
-        contentQualityScore = Math.min(100, contentQualityScore);
-
-        // Technical SEO Score (30% weight)
-        technicalSEOScore = headingStructure.structureScore;
-
-        // Readability Score (30% weight)
-        // Target 7th-8th grade level for general content
-        if (readabilityScores.fleschKincaid >= 7 && readabilityScores.fleschKincaid <= 8) {
-            readabilityScore = 100;
-        } else if (readabilityScores.fleschKincaid >= 6 && readabilityScores.fleschKincaid <= 9) {
-            readabilityScore = 85;
-        } else if (readabilityScores.fleschKincaid >= 5 && readabilityScores.fleschKincaid <= 12) {
-            readabilityScore = 70;
-        } else {
-            readabilityScore = 50;
-        }
-
-        // Overall score calculation
+        // Calculate weighted overall score
         const overallScore = Math.round(
-            (contentQualityScore * 0.4) +
-            (technicalSEOScore * 0.3) +
-            (readabilityScore * 0.3)
+            (scores.contentQuality * weights.contentQuality) +
+            (scores.technicalSEO * weights.technicalSEO) +
+            (scores.readability * weights.readability) +
+            (scores.userExperience * weights.userExperience)
         );
 
         return {
-            overall: overallScore,
-            contentQuality: Math.round(contentQualityScore),
-            technicalSEO: Math.round(technicalSEOScore),
-            readability: Math.round(readabilityScore)
+            overall: Math.min(100, Math.max(0, overallScore)),
+            contentQuality: Math.round(scores.contentQuality),
+            technicalSEO: Math.round(scores.technicalSEO),
+            readability: Math.round(scores.readability),
+            userExperience: Math.round(scores.userExperience)
         };
+    }
+
+    // Professional content quality scoring
+    calculateContentQualityScore(wordStats, keywordAnalysis) {
+        let score = 0;
+
+        // Word count optimization (25 points)
+        const wordCount = wordStats.words;
+        if (wordCount >= 1500 && wordCount <= 2500) {
+            score += 25; // Optimal range
+        } else if (wordCount >= 1000 && wordCount <= 3000) {
+            score += 20; // Good range
+        } else if (wordCount >= 500 && wordCount <= 4000) {
+            score += 15; // Acceptable range
+        } else if (wordCount >= 300) {
+            score += 10; // Minimum viable
+        } else {
+            score += 0; // Too short
+        }
+
+        // Keyword optimization (30 points)
+        const density = keywordAnalysis.primaryKeywordDensity;
+        if (density >= 0.8 && density <= 1.5) {
+            score += 30; // Perfect density
+        } else if (density >= 0.5 && density <= 2.5) {
+            score += 25; // Good density
+        } else if (density > 0 && density <= 3.5) {
+            score += 15; // Acceptable density
+        } else if (density > 3.5) {
+            score += 5; // Over-optimization penalty
+        }
+
+        // Content depth - semantic keywords (20 points)
+        const semanticCount = keywordAnalysis.semanticKeywords?.length || 0;
+        if (semanticCount >= 10) {
+            score += 20; // Rich semantic content
+        } else if (semanticCount >= 5) {
+            score += 15; // Good semantic coverage
+        } else if (semanticCount >= 2) {
+            score += 10; // Basic semantic coverage
+        }
+
+        // Sentence structure variety (15 points)
+        if (wordStats.sentences > 0) {
+            const avgWordsPerSentence = wordStats.words / wordStats.sentences;
+            if (avgWordsPerSentence >= 12 && avgWordsPerSentence <= 18) {
+                score += 15; // Optimal sentence length
+            } else if (avgWordsPerSentence >= 8 && avgWordsPerSentence <= 25) {
+                score += 12; // Good sentence length
+            } else {
+                score += 8; // Needs improvement
+            }
+        }
+
+        // Content freshness indicators (10 points)
+        const topKeywords = keywordAnalysis.topKeywords || [];
+        const uniqueKeywordRatio = topKeywords.length / Math.max(1, wordStats.words / 100);
+        if (uniqueKeywordRatio >= 0.8) {
+            score += 10; // Rich vocabulary
+        } else if (uniqueKeywordRatio >= 0.5) {
+            score += 7; // Good vocabulary
+        } else {
+            score += 3; // Limited vocabulary
+        }
+
+        return Math.min(100, score);
+    }
+
+    // Enhanced technical SEO scoring
+    calculateTechnicalSEOScore(headingStructure, keywordAnalysis) {
+        let score = 0;
+
+        // Heading structure (40 points)
+        if (headingStructure.hasH1) {
+            score += 15; // H1 exists
+
+            // Keyword in H1 bonus
+            if (this.targetKeyword && headingStructure.h1Text) {
+                const h1Text = headingStructure.h1Text.toLowerCase();
+                const keyword = this.targetKeyword.toLowerCase();
+                if (h1Text.includes(keyword)) {
+                    score += 10; // Keyword in H1
+                }
+            }
+        }
+
+        // Proper heading hierarchy
+        if (!headingStructure.multipleH1) {
+            score += 10; // Single H1
+        }
+
+        // Heading distribution
+        const totalHeadings = headingStructure.headingCount || 0;
+        if (totalHeadings >= 3 && totalHeadings <= 10) {
+            score += 10; // Good heading distribution
+        } else if (totalHeadings > 0) {
+            score += 5; // Some headings present
+        }
+
+        // Meta description analysis (30 points)
+        const metaLength = this.metaDescription?.length || 0;
+        if (metaLength >= 120 && metaLength <= 158) {
+            score += 20; // Optimal meta length
+
+            // Keyword in meta description
+            if (this.targetKeyword && this.metaDescription) {
+                const metaText = this.metaDescription.toLowerCase();
+                const keyword = this.targetKeyword.toLowerCase();
+                if (metaText.includes(keyword)) {
+                    score += 10; // Keyword in meta
+                }
+            }
+        } else if (metaLength >= 100 && metaLength <= 180) {
+            score += 15; // Acceptable meta length
+        } else if (metaLength > 0) {
+            score += 5; // Meta exists but not optimal
+        }
+
+        // Content analysis depth (30 points)
+        const analysisFactors = [
+            keywordAnalysis.primaryKeywordCount > 0, // Keyword usage
+            (keywordAnalysis.topKeywords?.length || 0) >= 5, // Vocabulary richness
+            this.targetKeyword?.trim().length > 0, // Target keyword set
+            metaLength > 0, // Meta description exists
+            headingStructure.hasH1, // H1 exists
+            totalHeadings >= 2 // Multiple headings
+        ];
+
+        const activeFactors = analysisFactors.filter(Boolean).length;
+        score += Math.round((activeFactors / analysisFactors.length) * 30);
+
+        return Math.min(100, score);
+    }
+
+    // Enhanced readability scoring
+    calculateReadabilityScore(readabilityScores) {
+        let score = 0;
+
+        // Flesch-Kincaid Grade Level (40 points)
+        const fkGrade = readabilityScores.fleschKincaid;
+        if (fkGrade >= 6 && fkGrade <= 8) {
+            score += 40; // Ideal grade level
+        } else if (fkGrade >= 5 && fkGrade <= 10) {
+            score += 35; // Good grade level
+        } else if (fkGrade >= 4 && fkGrade <= 12) {
+            score += 25; // Acceptable grade level
+        } else {
+            score += 15; // Needs improvement
+        }
+
+        // Flesch Reading Ease (30 points)
+        const fleschEase = readabilityScores.fleschEase;
+        if (fleschEase >= 60 && fleschEase <= 80) {
+            score += 30; // Optimal readability
+        } else if (fleschEase >= 50 && fleschEase <= 90) {
+            score += 25; // Good readability
+        } else if (fleschEase >= 30) {
+            score += 15; // Acceptable readability
+        } else {
+            score += 5; // Difficult to read
+        }
+
+        // SMOG Index consistency (30 points)
+        const smogIndex = readabilityScores.smogIndex;
+        const readabilityConsistency = Math.abs(fkGrade - smogIndex);
+        if (readabilityConsistency <= 2) {
+            score += 30; // Consistent readability scores
+        } else if (readabilityConsistency <= 4) {
+            score += 20; // Fairly consistent
+        } else {
+            score += 10; // Inconsistent readability
+        }
+
+        return Math.min(100, score);
+    }
+
+    // User experience scoring
+    calculateUserExperienceScore(wordStats) {
+        let score = 0;
+
+        // Reading time optimization (50 points)
+        const readingTime = wordStats.readingTime;
+        if (readingTime >= 3 && readingTime <= 12) {
+            score += 50; // Optimal reading time
+        } else if (readingTime >= 2 && readingTime <= 20) {
+            score += 40; // Good reading time
+        } else if (readingTime >= 1) {
+            score += 25; // Acceptable reading time
+        }
+
+        // Content scannability (30 points)
+        const sentenceCount = wordStats.sentences;
+        const wordCount = wordStats.words;
+
+        if (sentenceCount > 0) {
+            const avgSentenceLength = wordCount / sentenceCount;
+            if (avgSentenceLength <= 20) {
+                score += 30; // Easy to scan
+            } else if (avgSentenceLength <= 25) {
+                score += 20; // Moderately scannable
+            } else {
+                score += 10; // Hard to scan
+            }
+        }
+
+        // Content length engagement (20 points)
+        if (wordCount >= 800 && wordCount <= 3000) {
+            score += 20; // Engaging length
+        } else if (wordCount >= 300) {
+            score += 15; // Adequate length
+        } else {
+            score += 5; // Too short for engagement
+        }
+
+        return Math.min(100, score);
     }
 
     updateMetaAnalysis() {
         const metaText = this.metaDescription;
         const charCount = metaText.length;
 
-        // Update character count display
-        document.getElementById('meta-character-count').textContent = charCount;
+        // Calculate pixel width for different devices
+        const pixelWidths = this.calculateMetaPixelWidth(metaText);
 
-        // Update length status
-        const lengthStatus = document.getElementById('meta-length-status');
-        if (charCount === 0) {
-            lengthStatus.textContent = 'Ready to write!';
-        } else if (charCount < 120) {
-            lengthStatus.textContent = `${120 - charCount} chars to go`;
-        } else if (charCount <= 158) {
-            lengthStatus.textContent = 'Perfect length!';
-        } else {
-            lengthStatus.textContent = `${charCount - 158} chars too long`;
-        }
+        // Update character count display with pixel info
+        this.safeSetTextContent('meta-character-count', `${charCount} chars`);
 
-        // Update progress bar
-        const maxChars = 158;
-        const fillPercentage = Math.min(100, (charCount / maxChars) * 100);
-        document.getElementById('meta-length-fill').style.width = `${fillPercentage}%`;
+        // Determine optimal display based on pixel width
+        const mobileOptimal = pixelWidths.mobile <= 920; // ~120 chars on mobile
+        const desktopOptimal = pixelWidths.desktop <= 1200; // ~158 chars on desktop
 
-        // Update status with helpful guidance
-        const statusElement = document.getElementById('meta-status');
-        const statusIcon = statusElement.querySelector('.status-icon');
-        const statusText = statusElement.querySelector('span:last-child');
-
-        if (charCount === 0) {
-            statusIcon.textContent = '✍️';
-            statusText.textContent = 'Write a compelling description to get more clicks from Google';
-            statusElement.className = 'meta-status';
-        } else if (charCount < 50) {
-            statusIcon.textContent = '📝';
-            statusText.textContent = 'Too short - add more details about what readers will learn';
-            statusElement.className = 'meta-status status-fair';
-        } else if (charCount < 120) {
-            statusIcon.textContent = '📈';
-            statusText.textContent = `Good start! Add ${120 - charCount} more characters for optimal length`;
-            statusElement.className = 'meta-status status-fair';
-        } else if (charCount <= 158) {
-            statusIcon.textContent = '🌟';
-            statusText.textContent = 'Perfect! This will display fully on all devices';
-            statusElement.className = 'meta-status status-excellent';
-        } else if (charCount <= 180) {
-            statusIcon.textContent = '✂️';
-            statusText.textContent = `A bit long - trim ${charCount - 158} characters for mobile users`;
-            statusElement.className = 'meta-status status-fair';
-        } else {
-            statusIcon.textContent = '🚨';
-            statusText.textContent = `Too long! Google will cut off ${charCount - 158} characters`;
-            statusElement.className = 'meta-status status-poor';
-        }
-
-        // Update SERP preview
-        const serpDescription = document.getElementById('serp-description');
-        if (metaText.trim()) {
-            // Highlight keywords in preview
-            let previewText = metaText.length > 158 ?
-                metaText.substring(0, 158) + '...' :
-                metaText;
-
-            // Highlight target keyword if it exists
-            if (this.targetKeyword && this.targetKeyword.trim()) {
-                const keyword = this.targetKeyword.trim();
-                const regex = new RegExp(`\\b${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
-                previewText = previewText.replace(regex, `<strong>$&</strong>`);
+        // Update length status based on pixel calculations
+        const lengthStatus = this.safeGetElement('meta-length-status');
+        if (lengthStatus) {
+            if (charCount === 0) {
+                lengthStatus.textContent = 'Ready to write!';
+            } else if (!mobileOptimal && !desktopOptimal) {
+                lengthStatus.textContent = 'Too long for all devices';
+            } else if (!mobileOptimal) {
+                lengthStatus.textContent = 'Too long for mobile';
+            } else if (mobileOptimal && desktopOptimal) {
+                lengthStatus.textContent = 'Perfect for all devices!';
+            } else {
+                lengthStatus.textContent = 'Good for mobile, check desktop';
             }
+        }
 
-            serpDescription.innerHTML = previewText;
-        } else {
-            serpDescription.textContent = `Write a description about ${this.targetKeyword || 'your topic'} that makes people want to click...`;
+        // Update progress bar based on pixel width (mobile as primary)
+        const maxMobilePixels = 920;
+        const fillPercentage = Math.min(100, (pixelWidths.mobile / maxMobilePixels) * 100);
+        const metaLengthFill = this.safeGetElement('meta-length-fill');
+        if (metaLengthFill) {
+            metaLengthFill.style.width = `${fillPercentage}%`;
+
+            // Add visual indicators for different breakpoints
+            if (fillPercentage > 100) {
+                metaLengthFill.className = 'length-fill length-over';
+            } else if (fillPercentage > 85) {
+                metaLengthFill.className = 'length-fill length-warning';
+            } else if (fillPercentage > 60) {
+                metaLengthFill.className = 'length-fill length-good';
+            } else {
+                metaLengthFill.className = 'length-fill';
+            }
+        }
+
+        // Update status with pixel-based guidance
+        const statusElement = this.safeGetElement('meta-status');
+        if (statusElement) {
+            const statusIcon = statusElement.querySelector('.status-icon');
+            const statusText = statusElement.querySelector('span:last-child');
+
+            if (statusIcon && statusText) {
+                if (charCount === 0) {
+                    statusIcon.textContent = '✍️';
+                    statusText.textContent = 'Write a compelling description to get more clicks from Google';
+                    statusElement.className = 'meta-status';
+                } else if (pixelWidths.mobile < 300) {
+                    statusIcon.textContent = '📝';
+                    statusText.textContent = 'Too short - add more details about what readers will learn';
+                    statusElement.className = 'meta-status status-fair';
+                } else if (mobileOptimal && desktopOptimal) {
+                    statusIcon.textContent = '🌟';
+                    statusText.textContent = `Perfect! ${pixelWidths.mobile}px mobile, ${pixelWidths.desktop}px desktop - displays fully on all devices`;
+                    statusElement.className = 'meta-status status-excellent';
+                } else if (mobileOptimal && !desktopOptimal) {
+                    statusIcon.textContent = '📱';
+                    statusText.textContent = `Good for mobile (${pixelWidths.mobile}px) but will be cut on desktop (${pixelWidths.desktop}px)`;
+                    statusElement.className = 'meta-status status-good';
+                } else if (!mobileOptimal && desktopOptimal) {
+                    statusIcon.textContent = '✂️';
+                    statusText.textContent = `Will be cut on mobile (${pixelWidths.mobile}px) - trim for better mobile experience`;
+                    statusElement.className = 'meta-status status-fair';
+                } else {
+                    statusIcon.textContent = '🚨';
+                    statusText.textContent = `Too long for all devices! Mobile: ${pixelWidths.mobile}px, Desktop: ${pixelWidths.desktop}px`;
+                    statusElement.className = 'meta-status status-poor';
+                }
+            }
+        }
+
+        // Update SERP preview with pixel-based truncation
+        const serpDescription = this.safeGetElement('serp-description');
+        if (serpDescription) {
+            if (metaText.trim()) {
+                // Truncate based on mobile pixel limit (more conservative)
+                let previewText = metaText;
+                if (pixelWidths.mobile > 920) {
+                    // Find approximate character cutoff for mobile
+                    const cutoffRatio = 920 / pixelWidths.mobile;
+                    const cutoffIndex = Math.floor(metaText.length * cutoffRatio);
+                    previewText = metaText.substring(0, cutoffIndex) + '...';
+                }
+
+                // Highlight target keyword if it exists
+                if (this.targetKeyword && this.targetKeyword.trim()) {
+                    const keyword = this.targetKeyword.trim();
+                    const regex = new RegExp(`\\b${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+                    previewText = previewText.replace(regex, `<strong>$&</strong>`);
+                }
+
+                serpDescription.innerHTML = previewText;
+            } else {
+                serpDescription.textContent = `Write a description about ${this.targetKeyword || 'your topic'} that makes people want to click...`;
+            }
         }
 
         // Update meta tips with task styling
@@ -571,10 +1007,10 @@ class SEOContentAnalyzer {
     }
 
     updateWordStatsUI(wordStats) {
-        document.getElementById('word-count').textContent = wordStats.words.toLocaleString();
-        document.getElementById('reading-time').textContent = wordStats.readingTime;
-        document.getElementById('character-count').textContent = wordStats.characters.toLocaleString();
-        document.getElementById('sentence-count').textContent = wordStats.sentences.toLocaleString();
+        this.safeSetTextContent('word-count', wordStats.words.toLocaleString());
+        this.safeSetTextContent('reading-time', wordStats.readingTime);
+        this.safeSetTextContent('character-count', wordStats.characters.toLocaleString());
+        this.safeSetTextContent('sentence-count', wordStats.sentences.toLocaleString());
 
         // Update insights with actionable advice
         const insightsContainer = document.getElementById('content-insights');
@@ -635,13 +1071,13 @@ class SEOContentAnalyzer {
     }
 
     updateReadabilityUI(readabilityScores) {
-        // Update scores
-        document.getElementById('flesch-ease').textContent = readabilityScores.fleschEase;
-        document.getElementById('flesch-ease-grade').textContent = readabilityScores.fleschEaseGrade;
-        document.getElementById('flesch-kincaid').textContent = readabilityScores.fleschKincaid;
-        document.getElementById('flesch-kincaid-grade').textContent = readabilityScores.fleschKincaidGrade;
-        document.getElementById('smog-index').textContent = readabilityScores.smogIndex;
-        document.getElementById('smog-grade').textContent = readabilityScores.smogGrade;
+        // Update scores with safe DOM access
+        this.safeSetTextContent('flesch-ease', readabilityScores.fleschEase);
+        this.safeSetTextContent('flesch-ease-grade', readabilityScores.fleschEaseGrade);
+        this.safeSetTextContent('flesch-kincaid', readabilityScores.fleschKincaid);
+        this.safeSetTextContent('flesch-kincaid-grade', readabilityScores.fleschKincaidGrade);
+        this.safeSetTextContent('smog-index', readabilityScores.smogIndex);
+        this.safeSetTextContent('smog-grade', readabilityScores.smogGrade);
 
         // Update recommendation with actionable guidance
         const recommendation = document.getElementById('readability-recommendation');
@@ -758,14 +1194,55 @@ class SEOContentAnalyzer {
             statusIcon.textContent = '⚠️';
             statusText.textContent = 'A bit high - reduce keyword usage slightly';
             statusElement.className = 'keyword-status status-fair';
-            tips.push(`<strong>Reduce slightly:</strong> Remove ${keywordAnalysis.primaryKeywordCount - Math.floor((this.analysisResults?.wordStats?.words || 1000) * 0.02)} instances of "${this.targetKeyword}"`);
+            const totalWords = this.analysisResults?.wordStats?.words || 1000;
+            const optimalCount = Math.round(totalWords * 0.02); // 2% optimal
+
+            // Since we're in the "too high" zone, we should remove instances to get to 2% or below
+            let targetCount = optimalCount;
+            if (keywordAnalysis.primaryKeywordDensity > 2) {
+                // If over 2%, aim for exactly 2%
+                targetCount = Math.round(totalWords * 0.02);
+            }
+
+            const toRemoveForOptimal = Math.max(0, keywordAnalysis.primaryKeywordCount - targetCount);
+            const newDensity = ((keywordAnalysis.primaryKeywordCount - toRemoveForOptimal) / totalWords * 100).toFixed(2);
+            const instanceText = toRemoveForOptimal === 1 ? 'instance' : 'instances';
+
+            if (toRemoveForOptimal > 0) {
+                tips.push(`<strong>For optimal SEO:</strong> Remove ${toRemoveForOptimal} ${instanceText} to reach ${newDensity}% density (green zone)`);
+            } else {
+                tips.push(`<strong>Reduce slightly:</strong> Lower usage to reach optimal 2% density`);
+            }
             tips.push('<strong>Use synonyms:</strong> Replace some with related terms');
             tips.push('<strong>Focus on value:</strong> Prioritize helpful content over keyword stuffing');
         } else {
             statusIcon.textContent = '🚨';
             statusText.textContent = 'Too high! Google might see this as spam';
             statusElement.className = 'keyword-status status-poor';
-            tips.push(`<strong>Urgent:</strong> Remove ${keywordAnalysis.primaryKeywordCount - Math.floor((this.analysisResults?.wordStats?.words || 1000) * 0.02)} instances of "${this.targetKeyword}"`);
+            const totalWords = this.analysisResults?.wordStats?.words || 1000;
+
+            // Calculate target count for 2% density (green zone)
+            const targetForGreenZone = Math.floor(totalWords * 0.02);
+
+            // Debug logging
+            console.log('DEBUG - Keyword calculation:');
+            console.log('Total words:', totalWords);
+            console.log('Current keyword count:', keywordAnalysis.primaryKeywordCount);
+            console.log('Current density:', keywordAnalysis.primaryKeywordDensity + '%');
+            console.log('Target for green zone (2%):', targetForGreenZone);
+
+            // Calculate how many to remove to reach green zone
+            const toRemoveForOptimal = Math.max(0, keywordAnalysis.primaryKeywordCount - targetForGreenZone);
+            console.log('To remove for optimal:', toRemoveForOptimal);
+
+            // Calculate the resulting density after removal
+            const resultingCount = keywordAnalysis.primaryKeywordCount - toRemoveForOptimal;
+            const newDensity = ((resultingCount) / totalWords * 100).toFixed(2);
+            const instanceText = toRemoveForOptimal === 1 ? 'instance' : 'instances';
+
+            tips.push(`<strong>To reach green zone:</strong> Remove ${toRemoveForOptimal} ${instanceText} to get ${newDensity}% density (optimal for SEO)`);
+            tips.push(`<strong>Current status:</strong> ${keywordAnalysis.primaryKeywordCount} uses in ${totalWords} words = ${keywordAnalysis.primaryKeywordDensity}% (too high)`);
+            tips.push(`<strong>Target:</strong> ${targetForGreenZone} uses max = ${((targetForGreenZone/totalWords)*100).toFixed(1)}% density (Google's sweet spot)`);
             tips.push('<strong>Rewrite naturally:</strong> Replace repetitive keywords with pronouns');
             tips.push('<strong>Add more content:</strong> Expand your article to dilute keyword density');
         }
@@ -898,46 +1375,58 @@ class SEOContentAnalyzer {
     }
 
     updateSEOScoreUI(seoScore) {
-        // Update overall score with animation
-        const scoreElement = document.getElementById('overall-score');
-        this.animateNumber(scoreElement, 0, seoScore.overall, 1000);
+        console.log('updateSEOScoreUI called with:', seoScore);
 
-        // Update breakdown scores
-        document.getElementById('content-quality-score').textContent = seoScore.contentQuality;
-        document.getElementById('technical-seo-score').textContent = seoScore.technicalSEO;
-        document.getElementById('readability-score').textContent = seoScore.readability;
-
-        // Update score interpretation
-        const interpretationElement = document.getElementById('score-interpretation');
-        const interpretationText = interpretationElement.querySelector('.interpretation-text');
-
-        if (seoScore.overall >= 80) {
-            interpretationText.textContent = '🌟 Excellent! Your content is well-optimized for search engines';
-            interpretationText.className = 'interpretation-text status-excellent';
-        } else if (seoScore.overall >= 60) {
-            interpretationText.textContent = '👍 Good work! A few tweaks could boost your rankings';
-            interpretationText.className = 'interpretation-text status-good';
-        } else if (seoScore.overall >= 40) {
-            interpretationText.textContent = '📈 Getting there! Follow the tips below to improve';
-            interpretationText.className = 'interpretation-text status-fair';
-        } else {
-            interpretationText.textContent = '🚀 Lots of room to improve! Start with the red items';
-            interpretationText.className = 'interpretation-text status-poor';
+        // Update overall score with animation - using safe DOM access
+        const scoreElement = this.safeGetElement('overall-score');
+        if (scoreElement) {
+            this.animateNumber(scoreElement, 0, seoScore.overall, 1000);
         }
 
-        // Update score card color based on score
-        const scoreCard = document.querySelector('.score-card');
-        scoreCard.className = 'metric-card score-card';
+        // Update breakdown scores with safe DOM access
+        this.safeSetTextContent('content-quality-score', seoScore.contentQuality);
+        this.safeSetTextContent('technical-seo-score', seoScore.technicalSEO);
+        this.safeSetTextContent('readability-score', seoScore.readability);
+        this.safeSetTextContent('user-experience-score', seoScore.userExperience || '--');
 
-        if (seoScore.overall >= 80) {
-            scoreCard.classList.add('status-excellent');
-        } else if (seoScore.overall >= 60) {
-            scoreCard.classList.add('status-good');
-        } else if (seoScore.overall >= 40) {
-            scoreCard.classList.add('status-fair');
-        } else {
-            scoreCard.classList.add('status-poor');
+        // Update score interpretation with safe DOM access
+        const interpretationElement = this.safeGetElement('score-interpretation');
+        if (interpretationElement) {
+            const interpretationText = interpretationElement.querySelector('.interpretation-text');
+            if (interpretationText) {
+                if (seoScore.overall >= 80) {
+                    interpretationText.textContent = '🌟 Excellent! Your content is well-optimized for search engines';
+                    interpretationText.className = 'interpretation-text status-excellent';
+                } else if (seoScore.overall >= 60) {
+                    interpretationText.textContent = '👍 Good work! A few tweaks could boost your rankings';
+                    interpretationText.className = 'interpretation-text status-good';
+                } else if (seoScore.overall >= 40) {
+                    interpretationText.textContent = '📈 Getting there! Follow the tips below to improve';
+                    interpretationText.className = 'interpretation-text status-fair';
+                } else {
+                    interpretationText.textContent = '🚀 Lots of room to improve! Start with the red items';
+                    interpretationText.className = 'interpretation-text status-poor';
+                }
+            }
         }
+
+        // Update score card color based on score with safe DOM access
+        const scoreCard = this.safeGetElement('score-card') || document.querySelector('.score-card');
+        if (scoreCard) {
+            scoreCard.className = 'metric-card score-card';
+
+            if (seoScore.overall >= 80) {
+                scoreCard.classList.add('status-excellent');
+            } else if (seoScore.overall >= 60) {
+                scoreCard.classList.add('status-good');
+            } else if (seoScore.overall >= 40) {
+                scoreCard.classList.add('status-fair');
+            } else {
+                scoreCard.classList.add('status-poor');
+            }
+        }
+
+        console.log('SEO Score UI update completed');
     }
 
     animateNumber(element, start, end, duration) {
@@ -961,10 +1450,11 @@ class SEOContentAnalyzer {
 
     resetAnalysis() {
         // Reset all displays to default values
-        document.getElementById('overall-score').textContent = '--';
-        document.getElementById('content-quality-score').textContent = '--';
-        document.getElementById('technical-seo-score').textContent = '--';
-        document.getElementById('readability-score').textContent = '--';
+        this.safeSetTextContent('overall-score', '--');
+        this.safeSetTextContent('content-quality-score', '--');
+        this.safeSetTextContent('technical-seo-score', '--');
+        this.safeSetTextContent('readability-score', '--');
+        this.safeSetTextContent('user-experience-score', '--');
 
         document.getElementById('word-count').textContent = '--';
         document.getElementById('reading-time').textContent = '--';
@@ -1065,87 +1555,146 @@ class SEOContentAnalyzer {
     }
 
     exportJSON() {
-        if (!this.analysisResults || Object.keys(this.analysisResults).length === 0) {
-            alert('No analysis data to export. Please analyze some content first.');
-            return;
-        }
-
-        const exportData = {
-            ...this.analysisResults,
-            metadata: {
-                exportedAt: new Date().toISOString(),
-                tool: 'SEO Content Analyzer',
-                version: '1.0'
-            },
-            content: {
-                text: this.content.substring(0, 1000) + (this.content.length > 1000 ? '...' : ''),
-                targetKeyword: this.targetKeyword,
-                metaDescription: this.metaDescription
+        try {
+            // Validate analysis data exists
+            if (!this.analysisResults || Object.keys(this.analysisResults).length === 0) {
+                alert('No analysis data to export. Please analyze some content first.');
+                return;
             }
-        };
 
-        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `seo-analysis-${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+            // Validate required data structure
+            const { wordStats, readabilityScores, keywordAnalysis, seoScore } = this.analysisResults;
+            if (!wordStats || !readabilityScores || !keywordAnalysis || !seoScore) {
+                throw new Error('Analysis data is incomplete. Please re-analyze your content.');
+            }
+
+            const exportData = {
+                ...this.analysisResults,
+                metadata: {
+                    exportedAt: new Date().toISOString(),
+                    tool: 'SEO Content Analyzer',
+                    version: '1.0'
+                },
+                content: {
+                    text: this.content.substring(0, 1000) + (this.content.length > 1000 ? '...' : ''),
+                    targetKeyword: this.targetKeyword,
+                    metaDescription: this.metaDescription
+                }
+            };
+
+            // Safely create and validate JSON
+            const jsonString = JSON.stringify(exportData, null, 2);
+            if (!jsonString || jsonString === '{}') {
+                throw new Error('Failed to serialize analysis data');
+            }
+
+            // Create blob with error handling
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            if (blob.size === 0) {
+                throw new Error('Failed to create export file');
+            }
+
+            // Safely create download
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `seo-analysis-${new Date().toISOString().split('T')[0]}.json`;
+
+            // Ensure DOM manipulation is safe
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            console.log('JSON export completed successfully');
+        } catch (error) {
+            console.error('Export failed:', error);
+            alert(`Export failed: ${error.message}. Please try again or contact support.`);
+        }
     }
 
     exportCSV() {
-        if (!this.analysisResults || Object.keys(this.analysisResults).length === 0) {
-            alert('No analysis data to export. Please analyze some content first.');
-            return;
+        try {
+            // Validate analysis data exists
+            if (!this.analysisResults || Object.keys(this.analysisResults).length === 0) {
+                alert('No analysis data to export. Please analyze some content first.');
+                return;
+            }
+
+            // Validate required data structure with safe destructuring
+            const { wordStats, readabilityScores, keywordAnalysis, seoScore } = this.analysisResults;
+            if (!wordStats || !readabilityScores || !keywordAnalysis || !seoScore) {
+                throw new Error('Analysis data is incomplete. Please re-analyze your content.');
+            }
+
+            // Safely build CSV data with null checks
+            const csvData = [
+                ['Metric', 'Value', 'Status/Grade'],
+                ['Overall SEO Score', seoScore.overall || 0, this.getScoreStatus(seoScore.overall || 0)],
+                ['Content Quality Score', seoScore.contentQuality || 0, this.getScoreStatus(seoScore.contentQuality || 0)],
+                ['Technical SEO Score', seoScore.technicalSEO || 0, this.getScoreStatus(seoScore.technicalSEO || 0)],
+                ['Readability Score', seoScore.readability || 0, this.getScoreStatus(seoScore.readability || 0)],
+                ['', '', ''],
+                ['Word Count', wordStats.words || 0, this.getWordCountStatus(wordStats.words || 0)],
+                ['Character Count', wordStats.characters || 0, ''],
+                ['Sentence Count', wordStats.sentences || 0, ''],
+                ['Reading Time (minutes)', wordStats.readingTime || 0, ''],
+                ['', '', ''],
+                ['Flesch Reading Ease', readabilityScores.fleschEase || 0, readabilityScores.fleschEaseGrade || 'N/A'],
+                ['Flesch-Kincaid Grade', readabilityScores.fleschKincaid || 0, readabilityScores.fleschKincaidGrade || 'N/A'],
+                ['SMOG Index', readabilityScores.smogIndex || 0, readabilityScores.smogGrade || 'N/A'],
+                ['', '', ''],
+                ['Primary Keyword Density (%)', keywordAnalysis.primaryKeywordDensity || 0, keywordAnalysis.status || 'No analysis'],
+                ['Primary Keyword Count', keywordAnalysis.primaryKeywordCount || 0, ''],
+                ['Target Keyword', this.targetKeyword || 'Not specified', ''],
+            ];
+
+            // Safely add top keywords with validation
+            if (keywordAnalysis.topKeywords && Array.isArray(keywordAnalysis.topKeywords) && keywordAnalysis.topKeywords.length > 0) {
+                csvData.push(['', '', '']);
+                csvData.push(['Top Keywords', 'Count', 'Density (%)']);
+                keywordAnalysis.topKeywords.forEach(keyword => {
+                    if (keyword && keyword.word) {
+                        csvData.push([keyword.word, keyword.count || 0, keyword.density || 0]);
+                    }
+                });
+            }
+
+            // Safely create CSV content with error handling
+            const csvContent = csvData.map(row =>
+                row.map(cell => {
+                    const cellValue = String(cell != null ? cell : '');
+                    return `"${cellValue.replace(/"/g, '""')}"`;
+                }).join(',')
+            ).join('\n');
+
+            if (!csvContent) {
+                throw new Error('Failed to generate CSV content');
+            }
+
+            // Create blob with error handling
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            if (blob.size === 0) {
+                throw new Error('Failed to create CSV file');
+            }
+
+            // Safely create download
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `seo-analysis-${new Date().toISOString().split('T')[0]}.csv`;
+
+            // Ensure DOM manipulation is safe
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            console.log('CSV export completed successfully');
+        } catch (error) {
+            console.error('CSV export failed:', error);
+            alert(`CSV export failed: ${error.message}. Please try again or contact support.`);
         }
-
-        const { wordStats, readabilityScores, keywordAnalysis, seoScore } = this.analysisResults;
-
-        const csvData = [
-            ['Metric', 'Value', 'Status/Grade'],
-            ['Overall SEO Score', seoScore.overall, this.getScoreStatus(seoScore.overall)],
-            ['Content Quality Score', seoScore.contentQuality, this.getScoreStatus(seoScore.contentQuality)],
-            ['Technical SEO Score', seoScore.technicalSEO, this.getScoreStatus(seoScore.technicalSEO)],
-            ['Readability Score', seoScore.readability, this.getScoreStatus(seoScore.readability)],
-            ['', '', ''],
-            ['Word Count', wordStats.words, this.getWordCountStatus(wordStats.words)],
-            ['Character Count', wordStats.characters, ''],
-            ['Sentence Count', wordStats.sentences, ''],
-            ['Reading Time (minutes)', wordStats.readingTime, ''],
-            ['', '', ''],
-            ['Flesch Reading Ease', readabilityScores.fleschEase, readabilityScores.fleschEaseGrade],
-            ['Flesch-Kincaid Grade', readabilityScores.fleschKincaid, readabilityScores.fleschKincaidGrade],
-            ['SMOG Index', readabilityScores.smogIndex, readabilityScores.smogGrade],
-            ['', '', ''],
-            ['Primary Keyword Density (%)', keywordAnalysis.primaryKeywordDensity, keywordAnalysis.status],
-            ['Primary Keyword Count', keywordAnalysis.primaryKeywordCount, ''],
-            ['Target Keyword', this.targetKeyword, ''],
-        ];
-
-        // Add top keywords
-        if (keywordAnalysis.topKeywords.length > 0) {
-            csvData.push(['', '', '']);
-            csvData.push(['Top Keywords', 'Count', 'Density (%)']);
-            keywordAnalysis.topKeywords.forEach(keyword => {
-                csvData.push([keyword.word, keyword.count, keyword.density]);
-            });
-        }
-
-        const csvContent = csvData.map(row =>
-            row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
-        ).join('\n');
-
-        const blob = new Blob([csvContent], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `seo-analysis-${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
     }
 
     getScoreStatus(score) {
@@ -1174,7 +1723,11 @@ class SEOContentAnalyzer {
 }
 
 // Initialize the analyzer when the DOM is loaded
+// Test function removed - debugging complete
+
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM loaded, starting analyzer initialization...');
+
     // Check if we need to scroll to top after clearing content
     if (sessionStorage.getItem('scrollToTop') === 'true') {
         sessionStorage.removeItem('scrollToTop');
@@ -1182,9 +1735,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Also focus on the textarea after a brief delay
         setTimeout(() => {
-            document.getElementById('content-input').focus();
+            const textarea = document.getElementById('content-input');
+            if (textarea) {
+                textarea.focus();
+            }
         }, 100);
     }
 
-    new SEOContentAnalyzer();
+    try {
+        window.analyzer = new SEOContentAnalyzer();
+        console.log('SEO Content Analyzer initialized successfully');
+
+    } catch (error) {
+        console.error('Failed to initialize SEO Content Analyzer:', error);
+        console.error('Error stack:', error.stack);
+    }
 });

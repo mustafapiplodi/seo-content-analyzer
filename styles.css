@@ -304,10 +304,10 @@ body {
 
 .score-breakdown {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--spacing-5);
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--spacing-4);
     margin-top: var(--spacing-6);
-    max-width: 600px;
+    max-width: 800px;
     margin-left: auto;
     margin-right: auto;
 }
@@ -938,8 +938,9 @@ body {
     }
 
     .score-breakdown {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
         gap: var(--spacing-3);
+        max-width: 100%;
     }
 
     .metric-stats {
