@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 SEO Content Analyzer - Professional Grade Analysis</title>
+    <meta name="description" content="Professional SEO Content Analyzer with readability scoring, keyword density analysis, meta description optimization, and comprehensive SEO metrics.">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <h1 class="header-title">📊 SEO Content Analyzer</h1>
+            <p class="header-subtitle">Get your content ranked higher on Google with instant SEO feedback and actionable tips</p>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            <!-- Content Input Section -->
+            <section class="input-section">
+                <div class="input-group">
+                    <label for="content-input" class="input-label">
+                        📝 Your Content
+                        <span class="input-helper">Paste your blog post, article, or webpage content here. Don't worry about formatting - just paste the text!</span>
+                    </label>
+                    <textarea
+                        id="content-input"
+                        class="content-textarea"
+                        placeholder="Example:
+
+# The Ultimate Guide to Coffee Brewing
+
+Coffee brewing is an art form that combines science with personal taste...
+
+## Different Brewing Methods
+
+There are several ways to brew great coffee...
+
+(Just paste your content - we'll help you optimize it for SEO!)"
+                        rows="12"
+                    ></textarea>
+                    <div class="input-tip">
+                        💡 <strong>Pro Tip:</strong> If your content doesn't have headings (like "# Title" or "## Section"), we'll show you how to add them for better SEO!
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-group">
+                        <label for="target-keyword" class="input-label">
+                            🎯 Target Keyword
+                            <span class="input-helper">What do you want to rank for? (e.g., "coffee brewing guide")</span>
+                        </label>
+                        <input type="text" id="target-keyword" class="input-field" placeholder="e.g., coffee brewing methods">
+                        <div class="input-tip">
+                            💡 Choose 1-3 words that people search for on Google
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label for="meta-description" class="input-label">
+                            📄 Meta Description
+                            <span class="input-helper">This appears under your title in Google search results</span>
+                        </label>
+                        <textarea id="meta-description" class="input-field meta-input" placeholder="Learn the best coffee brewing methods to make perfect coffee at home. Discover French press, pour-over, and espresso techniques for amazing results." rows="2"></textarea>
+                        <div class="input-tip">
+                            📏 Keep it between 120-158 characters for best results
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Results Dashboard -->
+            <section class="results-section">
+                <div class="results-grid">
+
+                    <!-- Overall SEO Score -->
+                    <div class="metric-card score-card">
+                        <div class="metric-header">
+                            <h3 class="metric-title">🎯 Your SEO Score</h3>
+                            <p class="score-explanation">This combines all factors Google uses to rank your content. Higher scores = better search rankings!</p>
+                        </div>
+                        <div class="score-circle">
+                            <div class="score-value" id="overall-score">--</div>
+                            <div class="score-label">/ 100</div>
+                        </div>
+                        <div class="score-interpretation" id="score-interpretation">
+                            <div class="interpretation-text">Add content above to see your SEO score</div>
+                        </div>
+                        <div class="score-breakdown" id="score-breakdown">
+                            <div class="score-item">
+                                <span>Content Quality</span>
+                                <span id="content-quality-score">--</span>
+                            </div>
+                            <div class="score-item">
+                                <span>Technical SEO</span>
+                                <span id="technical-seo-score">--</span>
+                            </div>
+                            <div class="score-item">
+                                <span>Readability</span>
+                                <span id="readability-score">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Word Count & Reading Time -->
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <h3 class="metric-title">📊 Content Length</h3>
+                            <p class="metric-explanation">Google prefers comprehensive content. Longer articles typically rank better!</p>
+                        </div>
+                        <div class="metric-stats">
+                            <div class="stat-item">
+                                <div class="stat-value" id="word-count">--</div>
+                                <div class="stat-label">Words</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="reading-time">--</div>
+                                <div class="stat-label">Min Read</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="character-count">--</div>
+                                <div class="stat-label">Characters</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="sentence-count">--</div>
+                                <div class="stat-label">Sentences</div>
+                            </div>
+                        </div>
+                        <div class="metric-insights" id="content-insights">
+                            <div class="insight-item">
+                                <span class="insight-icon">🎯</span>
+                                <span class="insight-text">Sweet spot: 1,500-2,500 words for blog posts</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Readability Analysis -->
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <h3 class="metric-title">📚 How Easy Is It to Read?</h3>
+                            <p class="metric-explanation">Google loves content that's easy to understand. Simpler = better rankings!</p>
+                        </div>
+                        <div class="readability-scores">
+                            <div class="readability-item">
+                                <span class="readability-name">Reading Ease Score</span>
+                                <span class="readability-value" id="flesch-ease">--</span>
+                                <span class="readability-grade" id="flesch-ease-grade">--</span>
+                            </div>
+                            <div class="readability-item">
+                                <span class="readability-name">Grade Level</span>
+                                <span class="readability-value" id="flesch-kincaid">--</span>
+                                <span class="readability-grade" id="flesch-kincaid-grade">--</span>
+                            </div>
+                            <div class="readability-item">
+                                <span class="readability-name">Complexity Score</span>
+                                <span class="readability-value" id="smog-index">--</span>
+                                <span class="readability-grade" id="smog-grade">--</span>
+                            </div>
+                        </div>
+                        <div class="readability-recommendation" id="readability-recommendation">
+                            <span class="insight-icon">🎯</span>
+                            <span>Aim for 7th-8th grade level - easy for everyone to read!</span>
+                        </div>
+                        <div class="readability-tips">
+                            <h4>📝 How to Improve Readability:</h4>
+                            <ul>
+                                <li>Use shorter sentences (15-20 words max)</li>
+                                <li>Choose simple words over complex ones</li>
+                                <li>Break up long paragraphs</li>
+                                <li>Use bullet points and lists</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Keyword Density -->
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <h3 class="metric-title">🔑 Keyword Usage</h3>
+                            <p class="metric-explanation">This shows how often your target keyword appears. Too little = hard to rank, too much = spam!</p>
+                        </div>
+                        <div class="keyword-stats">
+                            <div class="keyword-primary">
+                                <div class="keyword-density">
+                                    <span class="density-value" id="primary-keyword-density">--%</span>
+                                    <span class="density-label">Target Keyword Usage</span>
+                                </div>
+                                <div class="keyword-status" id="keyword-status">
+                                    <span class="status-icon">💡</span>
+                                    <span>Enter your target keyword above to check usage</span>
+                                </div>
+                            </div>
+                            <div class="keyword-occurrences" id="keyword-occurrences">
+                                <div class="occurrence-item">
+                                    <span>Times Used</span>
+                                    <span id="keyword-count">--</span>
+                                </div>
+                                <div class="occurrence-item">
+                                    <span>Sweet Spot</span>
+                                    <span id="optimal-range">1-2%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="keyword-tips">
+                            <h4>🎯 Keyword Best Practices:</h4>
+                            <ul id="keyword-tips-list">
+                                <li><strong>Natural usage:</strong> Don't force keywords - write naturally</li>
+                                <li><strong>Variations:</strong> Use related words ("coffee brewing" + "making coffee")</li>
+                                <li><strong>Placement:</strong> Include in title, first paragraph, and headings</li>
+                            </ul>
+                        </div>
+                        <div class="top-keywords" id="top-keywords">
+                            <h4>📈 Words You Use Most:</h4>
+                            <div class="keyword-list" id="keyword-list">
+                                <span class="keyword-tag secondary">Add content to see your top words</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Meta Description Optimizer -->
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <h3 class="metric-title">📝 Google Search Preview</h3>
+                            <p class="metric-explanation">This is what people see in Google search results. Make it compelling to get more clicks!</p>
+                        </div>
+                        <div class="meta-analysis">
+                            <div class="meta-length">
+                                <div class="length-bar">
+                                    <div class="length-fill" id="meta-length-fill"></div>
+                                    <div class="length-markers">
+                                        <span class="marker mobile">📱</span>
+                                        <span class="marker desktop">💻</span>
+                                    </div>
+                                </div>
+                                <div class="length-stats">
+                                    <span class="length-count" id="meta-character-count">0</span>
+                                    <span class="length-label">characters</span>
+                                    <span class="length-status" id="meta-length-status">Perfect length!</span>
+                                </div>
+                            </div>
+                            <div class="meta-status" id="meta-status">
+                                <span class="status-icon">💡</span>
+                                <span>Sweet spot: 120-158 characters to show fully on all devices</span>
+                            </div>
+                            <div class="meta-preview" id="meta-preview">
+                                <div class="preview-title">🔍 How it looks in Google:</div>
+                                <div class="serp-preview">
+                                    <div class="serp-title">Your Awesome Article Title</div>
+                                    <div class="serp-url">https://yourwebsite.com/your-article</div>
+                                    <div class="serp-description" id="serp-description">Write your meta description above to see how it looks...</div>
+                                </div>
+                            </div>
+                            <div class="meta-tips">
+                                <h4>✨ Meta Description Tips:</h4>
+                                <ul>
+                                    <li><strong>Include your keyword</strong> (it gets bolded in search)</li>
+                                    <li><strong>Make it compelling</strong> - this is your ad copy!</li>
+                                    <li><strong>Call to action:</strong> "Learn how", "Discover", "Find out"</li>
+                                    <li><strong>Match search intent</strong> - what are people looking for?</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Heading Structure -->
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <h3 class="metric-title">📋 Content Organization</h3>
+                            <p class="metric-explanation">Good headings help Google understand your content structure and improve user experience!</p>
+                        </div>
+                        <div class="heading-analysis" id="heading-analysis">
+                            <div class="heading-stats">
+                                <div class="heading-count">
+                                    <span class="count-value" id="heading-count">0</span>
+                                    <span class="count-label">Headings Found</span>
+                                </div>
+                                <div class="h1-status" id="h1-status">
+                                    <span class="status-icon">💡</span>
+                                    <span>Add headings to your content!</span>
+                                </div>
+                            </div>
+                            <div class="heading-structure" id="heading-structure">
+                                <div class="structure-item">
+                                    <span class="structure-label">✏️ Add headings using # for better SEO</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="heading-guide">
+                            <h4>🎯 How to Add Headings:</h4>
+                            <div class="heading-examples">
+                                <div class="heading-example">
+                                    <code># Your Main Title (H1)</code>
+                                    <span class="example-note">Use once per page</span>
+                                </div>
+                                <div class="heading-example">
+                                    <code>## Major Section (H2)</code>
+                                    <span class="example-note">For main topics</span>
+                                </div>
+                                <div class="heading-example">
+                                    <code>### Subsection (H3)</code>
+                                    <span class="example-note">For supporting points</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="heading-recommendations" id="heading-recommendations">
+                            <div class="recommendation-item">
+                                <span class="insight-icon">🏆</span>
+                                <span>Include your keyword in H1 and some H2s</span>
+                            </div>
+                            <div class="recommendation-item">
+                                <span class="insight-icon">📖</span>
+                                <span>Keep headings clear and descriptive</span>
+                            </div>
+                            <div class="recommendation-item">
+                                <span class="insight-icon">⚡</span>
+                                <span>Use headings to break up long content</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="action-section">
+                    <button class="btn btn-primary" id="export-json">
+                        📁 Export JSON Report
+                    </button>
+                    <button class="btn btn-secondary" id="export-csv">
+                        📊 Export CSV Data
+                    </button>
+                    <button class="btn btn-secondary" id="clear-content">
+                        🗑️ Clear Content
+                    </button>
+                </div>
+
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p class="footer-text">
+                Built with insights from Google's 2024-2025 algorithm updates |
+                Real-time browser-based analysis for privacy and performance
+            </p>
+            <p class="footer-text">
+                Made with ❤️ by <a href="https://www.linkedin.com/in/mustafapiplodi/" target="_blank" rel="noopener noreferrer">Mustafa Piplodi</a>
+            </p>
+            <p class="footer-text">
+                Powered by <a href="https://www.scalinghigh.com" target="_blank" rel="noopener noreferrer">Scaling High Technologies</a>
+            </p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
