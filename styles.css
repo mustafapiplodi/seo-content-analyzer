@@ -1272,4 +1272,9 @@ body {
     .metric-explanation {
         font-size: 0.85rem;
     }
+
+    /* Center readability values on mobile */
+    .readability-value {
+        text-align: center;
+    }
 }
